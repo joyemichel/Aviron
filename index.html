@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Aviron Live</title>
+<meta name="description" content="Compteur de cadence, vitesse et chronomètre pour l'aviron">
+<meta name="theme-color" content="#0b1d2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aviron Live">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #ffffff;
+    --ink: #0b0f14;
+    --muted: #5b6470;
+    --line: #d9d3c7;
+    --run: #0f8a4b;
+    --pause: #d98a00;
+    --bad: #c62828;
+    --accent: #0b1d2c;
+    --flash: #0f8a4b;
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000;
+    --panel: #0d1117;
+    --ink: #f5f3ee;
+    --muted: #9aa4b0;
+    --line: #232b35;
+    --run: #2ecc71;
+    --pause: #ffb020;
+    --bad: #ff5252;
+    --accent: #f5f3ee;
+    --flash: #2ecc71;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; letter-spacing: -0.02em; font-weight: 700; line-height: 0.95; }
+
+  /* ---------- écran principal ---------- */
+  #app {
+    position: fixed; inset: 0;
+    padding: calc(env(safe-area-inset-top) + 6px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px);
+    display: grid; grid-template-rows: auto 1fr auto; gap: 6px;
+  }
+  #statusbar {
+    display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 4px;
+    font-size: 14px; color: var(--muted); font-weight: 600;
+  }
+  #state { padding: 4px 10px; border-radius: 999px; background: var(--line); color: var(--ink); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+  #app[data-state="running"] #state { background: var(--run); color: #fff; }
+  #app[data-state="paused"] #state { background: var(--pause); color: #000; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.good { background: var(--run); } .dot.mid { background: var(--pause); } .dot.bad { background: var(--bad); }
+  #beat { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: background .25s; }
+  #beat.on { background: var(--flash); transition: none; }
+  .spacer { flex: 1; }
+  .iconbtn {
+    height: 34px; min-width: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); font-size: 15px; font-weight: 600;
+  }
+
+  #grid {
+    display: grid; gap: 6px; min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: 0.9fr 3fr;
+    grid-template-areas: "time" "main";
+  }
+  #main { grid-area: main; position: relative; min-height: 0; }
+  .view { position: absolute; inset: 0; }
+  #viewMetrics {
+    display: grid; gap: 6px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 0.5fr;
+    grid-template-areas: "rate rate" "speed speed" "a b";
+  }
+  #viewCap { opacity: 0; pointer-events: none; }
+  #app[data-view="cap"] #viewCap { opacity: 1; }
+  #app[data-view="cap"] #viewMetrics { opacity: 0; }
+  #viewDots { position: absolute; top: 8px; right: 10px; display: none; gap: 5px; z-index: 2; }
+  #app[data-cap="on"] #viewDots { display: flex; }
+  #viewDots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  #app[data-view="metrics"] #viewDots i:first-child, #app[data-view="cap"] #viewDots i:last-child { background: var(--muted); }
+  .tile {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    min-height: 0; overflow: hidden; position: relative;
+  }
+  .label { position: absolute; top: 6px; left: 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .unit { position: absolute; bottom: 6px; right: 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  #tTime { grid-area: time; } #tRate { grid-area: rate; } #tSpeed { grid-area: speed; }
+  #tA { grid-area: a; } #tB { grid-area: b; }
+  #time { font-size: min(21vw, 13vh); }
+  #time small { font-size: 0.5em; color: var(--muted); }
+  #rate { font-size: min(30vw, 15vh); }
+  #speed { font-size: min(24vw, 14vh); }
+  #speed2 { font-size: 15px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .small { font-size: min(9vw, 5.5vh); }
+
+  /* écran cap */
+  #viewCap { position: absolute; inset: 0; }
+  #capDev { font-size: min(30vw, 17vh); }
+  #capHint { font-size: min(7vw, 4vh); font-weight: 700; margin-top: 1.5vh; }
+  #capBarWrap { display: flex; align-items: center; gap: 8px; width: 90%; margin-top: 2.5vh; font-weight: 700; color: var(--muted); font-size: 15px; }
+  #capBar { position: relative; flex: 1; height: 22px; border-radius: 11px; background: var(--line); }
+  #capBar .mid { position: absolute; left: calc(50% - 1.5px); top: -4px; bottom: -4px; width: 3px; background: var(--ink); }
+  #lineMarker { position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--muted); border: 3px solid var(--panel); display: none; }
+  #capAngle { font-size: min(5.5vw, 3.2vh); font-weight: 700; margin-top: 2vh; min-height: 1.2em; }
+  #capInfo { font-size: 15px; color: var(--muted); font-weight: 600; margin-top: 1.5vh; font-variant-numeric: tabular-nums; }
+  #viewCap[data-zone="ok"] #capDev, #viewCap[data-zone="ok"] #capHint { color: var(--run); }
+  #viewCap[data-zone="warn"] #capDev, #viewCap[data-zone="warn"] #capHint { color: var(--pause); }
+  #viewCap[data-zone="bad"] #capDev, #viewCap[data-zone="bad"] #capHint { color: var(--bad); }
+  #viewCap[data-zone="ok"] #lineMarker { background: var(--run); }
+  #viewCap[data-zone="warn"] #lineMarker { background: var(--pause); }
+  #viewCap[data-zone="bad"] #lineMarker { background: var(--bad); }
+
+  @media (orientation: landscape) {
+    #grid {
+      grid-template-columns: 1fr 2fr;
+      grid-template-rows: 1fr;
+      grid-template-areas: "time main";
+    }
+    #viewMetrics {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 0.4fr;
+      grid-template-areas: "rate speed" "a b";
+    }
+    #capDev { font-size: min(15vw, 28vh); }
+    #capHint { font-size: min(4vw, 7vh); }
+    #time { font-size: min(9vw, 26vh); }
+    #rate { font-size: min(14vw, 34vh); }
+    #speed { font-size: min(9vw, 26vh); }
+    .small { font-size: min(5vw, 9vh); }
+  }
+
+  #hint {
+    position: absolute; left: 0; right: 0; bottom: 8px;
+    text-align: center; font-size: 15px; font-weight: 600; color: var(--muted); pointer-events: none;
+  }
+  #bar { display: flex; gap: 8px; }
+  #bar .btn { height: 64px; }
+  #btnFinish, #btnClearCap { display: none; }
+  #app[data-state="paused"] #btnFinish { display: block; }
+  #app[data-state="paused"][data-cap="on"] #btnClearCap { display: block; }
+  #btnCap { flex: 1.4; }
+  #btnCap:disabled { opacity: .45; }
+  .btn {
+    flex: 1; height: 56px; border-radius: 14px; border: none; font-size: 17px; font-weight: 700;
+    background: var(--accent); color: var(--bg);
+  }
+  .btn.secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+  .btn.danger { background: var(--bad); color: #fff; }
+
+  /* appui long pour arrêter */
+  #hold {
+    position: fixed; left: 0; right: 0; top: 0; height: 6px; background: var(--pause);
+    transform-origin: left; transform: scaleX(0); pointer-events: none; z-index: 5;
+  }
+
+  /* ---------- panneaux ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 10; display: none; overflow-y: auto;
+    padding: calc(env(safe-area-inset-top) + 18px) calc(env(safe-area-inset-right) + 18px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 18px);
+    -webkit-user-select: text; user-select: text;
+  }
+  .overlay.show { display: block; }
+  .overlay h1 { font-size: 30px; margin: 8px 0 6px; }
+  .overlay h2 { font-size: 20px; margin: 22px 0 10px; }
+  .overlay p { font-size: 16px; line-height: 1.45; color: var(--muted); margin: 0 0 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 52px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 16px; }
+  .row:last-child { border-bottom: none; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: none; background: transparent; color: var(--ink); padding: 9px 12px; font-size: 15px; font-weight: 600; }
+  .seg button.on { background: var(--accent); color: var(--bg); }
+  .sess { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .sess:last-child { border-bottom: none; }
+  .sess .t { font-weight: 700; font-size: 16px; }
+  .sess .m { color: var(--muted); font-size: 14px; margin: 3px 0 8px; font-variant-numeric: tabular-nums; }
+  .sess .a { display: flex; gap: 8px; }
+  .sess .a button { flex: 1; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-weight: 600; font-size: 14px; }
+  .err { color: var(--bad); font-weight: 600; }
+  #toast {
+    position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 50px); transform: translateX(-50%);
+    background: var(--accent); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600;
+    font-size: 15px; z-index: 20; display: none; max-width: 90vw; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="hold"></div>
+
+<div id="app" data-state="idle" data-view="metrics" data-cap="off">
+  <div id="statusbar">
+    <span id="state">Prêt</span>
+    <span class="pill" title="GPS"><span id="gpsDot" class="dot"></span><span id="gpsTxt">GPS</span></span>
+    <span class="pill" title="Coup détecté"><span id="beat"></span></span>
+    <span id="lockTxt" class="pill"></span>
+    <span class="spacer"></span>
+    <button class="iconbtn" data-ui id="btnMenu" aria-label="Réglages">⚙︎</button>
+  </div>
+
+  <div id="grid">
+    <div class="tile" id="tTime"><span class="label">Temps</span><div id="time" class="num">0:00<small>.0</small></div><div id="hint">Toucher l'écran pour démarrer</div></div>
+    <div id="main">
+    <div class="view" id="viewMetrics">
+    <div class="tile" id="tRate"><span class="label">Cadence</span><div id="rate" class="num">--</div><span class="unit">cps/min</span></div>
+    <div class="tile" id="tSpeed"><span class="label" id="speedLabel">Split</span><div id="speed" class="num">--:--</div><div id="speed2">-- km/h</div><span class="unit" id="speedUnit">/500 m</span></div>
+    <div class="tile" id="tA"><span class="label">Distance</span><div id="dist" class="num small">0 m</div></div>
+    <div class="tile" id="tB"><span class="label">Coups</span><div id="strokes" class="num small">0</div></div>
+    </div>
+    <div class="view tile" id="viewCap" data-zone="ok">
+      <span class="label">Écart à la ligne</span>
+      <div id="capDev" class="num">--</div>
+      <div id="capHint">&nbsp;</div>
+      <div id="capBarWrap"><span>B</span><div id="capBar"><div class="mid"></div><div id="lineMarker"></div></div><span>T</span></div>
+      <div id="capAngle"></div>
+      <div id="capInfo"></div>
+    </div>
+    <div id="viewDots"><i></i><i></i></div>
+    </div>
+  </div>
+
+  <div id="bar">
+    <button class="btn" data-ui id="btnCap" disabled>Cap</button>
+    <button class="btn secondary" data-ui id="btnClearCap">Effacer cap</button>
+    <button class="btn danger" data-ui id="btnFinish">Terminer</button>
+  </div>
+</div>
+
+<!-- démarrage : nécessaire pour les autorisations (iPhone) -->
+<div class="overlay show" id="ovStart">
+  <h1>Aviron Live</h1>
+  <p>Fixe le téléphone sur le bateau, écran visible. L'app mesure la cadence avec l'accéléromètre, la vitesse avec le GPS, et garde l'écran allumé.</p>
+  <p>Au démarrage, accepte l'accès à la <b>position</b> et à <b>« Mouvement et orientation »</b> (cadence et boussole).</p>
+  <button class="btn" id="btnSensors" style="width:100%;margin-top:10px">Activer les capteurs</button>
+  <p id="startMsg" style="margin-top:14px"></p>
+  <h2>Utilisation</h2>
+  <p>• Toucher l'écran : démarre le chrono. Toucher à nouveau : pause.<br>
+     • En pause : toucher pour reprendre, ou « Terminer » pour enregistrer la séance.<br>
+     • Bouton <b>Donner le cap</b> : bateau pointé dans la direction voulue, appuie. Une ligne droite part de l'endroit où tu es, dans l'axe du bateau. L'écran alterne ensuite toutes les 3 s entre ton écart à cette ligne (en mètres, côté bâbord ou tribord) et cadence / split / vitesse. « Nouveau cap » à tout moment pour repartir sur une nouvelle ligne.<br>
+     • ⚙︎ : réglages, historique et export (CSV, GPX).</p>
+  <p>Pour l'installer : dans Safari, bouton Partager → « Sur l'écran d'accueil ».</p>
+</div>
+
+<!-- réglages + historique -->
+<div class="overlay" id="ovMenu">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <h1>Réglages</h1>
+    <button class="iconbtn" id="btnClose">Fermer</button>
+  </div>
+  <div class="card">
+    <div class="row"><span>Vitesse affichée en grand</span>
+      <span class="seg" data-key="speedMode"><button data-v="split">/500 m</button><button data-v="kmh">km/h</button></span></div>
+    <div class="row"><span>Thème</span>
+      <span class="seg" data-key="theme"><button data-v="light">Clair</button><button data-v="dark">Sombre</button></span></div>
+    <div class="row"><span>Arrêt du chrono</span>
+      <span class="seg" data-key="stopMode"><button data-v="tap">Toucher</button><button data-v="hold">Appui 1 s</button></span></div>
+    <div class="row"><span>Alternance des écrans</span>
+      <span class="seg" data-key="altSec"><button data-v="3">3 s</button><button data-v="5">5 s</button></span></div>
+    <div class="row"><span>Sensibilité des coups</span>
+      <span class="seg" data-key="sens"><button data-v="0.75">Basse</button><button data-v="1">Normale</button><button data-v="1.3">Haute</button></span></div>
+  </div>
+  <p>« Appui 1 s » évite qu'une éclaboussure arrête le chrono. Baisse la sensibilité si l'app compte des coups en trop par mer agitée, augmente-la si elle en manque en rame légère.</p>
+
+  <h2>Séances enregistrées</h2>
+  <div class="card" id="sessList"></div>
+  <p style="font-size:13px">Les séances restent sur ce téléphone uniquement (30 dernières).</p>
+</div>
+
+<div id="toast"></div>
+
+<script src="stroke.js"></script>
+<script src="heading.js"></script>
+<script src="line.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
