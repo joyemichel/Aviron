@@ -1,5 +1,5 @@
 /* Service worker : met l'app en cache pour qu'elle fonctionne sans réseau sur l'eau */
-var CACHE = 'myscoach-v8';
+var CACHE = 'myscoach-v10';
 var FILES = [
   './', './index.html', './app.js', './stroke.js', './heading.js', './line.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'

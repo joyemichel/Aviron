@@ -1,5 +1,5 @@
 /* My Scoach — logique de l'application */
-var APP_VERSION = '1.2 (18.10.2026)';
+var APP_VERSION = '1.4 (18.10.2026)';
 (function () {
   'use strict';
 
@@ -9,7 +9,7 @@ var APP_VERSION = '1.2 (18.10.2026)';
   // ---------- réglages ----------
   var SETTINGS_KEY = 'avironlive.settings';
   var SESS_KEY = 'avironlive.sessions';
-  var settings = { speedMode: 'split', theme: 'light', stopMode: 'tap', sens: '1', altSec: '3' };
+  var settings = { speedMode: 'split', theme: 'light', stopMode: 'tap', sens: '1', altSec: '3', tol: '1.5' };
   function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   Object.assign(settings, load(SETTINGS_KEY, {}));
@@ -347,17 +347,26 @@ var APP_VERSION = '1.2 (18.10.2026)';
       $('speed2').textContent = fmtSplit(speed) + ' /500 m';
     }
     // cap et alternance des écrans
+    // ligne droite : couleur de fond de la cadence
     var capOn = lineOn(), lst = lineStatus();
     app.setAttribute('data-cap', capOn ? 'on' : 'off');
+    app.setAttribute('data-view', 'metrics');
     var btn = $('btnCap');
     btn.disabled = !posFresh();
     btn.textContent = !posFresh() ? 'Cap (attente GPS…)' : capOn ? 'Nouveau cap' : 'Donner le cap';
+    var side = 'center', ls = '';
     if (capOn) {
-      renderLine(lst);
-      var period = (parseFloat(settings.altSec) || 3) * 1000;
-      var phase = Math.floor((Date.now() - altStart) / period) % 2;
-      app.setAttribute('data-view', phase === 0 ? 'cap' : 'metrics');
-    } else app.setAttribute('data-view', 'metrics');
+      if (!posFresh()) ls = 'Ligne · GPS perdu';
+      else if (!lst || lst.e === null) ls = 'Ligne · calage ' + Math.round(tracker.calProgress() * 100) + ' %';
+      else {
+        var tol = parseFloat(settings.tol) || 1.5, e = lst.e;
+        // e > 0 : bateau à tribord de la ligne → il faut aller à bâbord (rouge) ; e < 0 → aller à tribord (vert)
+        side = Math.abs(e) < tol ? 'center' : (e < 0 ? 'stbd' : 'port');
+        ls = side === 'center' ? 'Ligne ✓' : (e < 0 ? '→ tribord ' : '→ bâbord ') + Math.abs(e).toFixed(Math.abs(e) < 10 ? 1 : 0) + ' m';
+      }
+    }
+    $('tRate').setAttribute('data-side', side);
+    $('lineState').textContent = ls;
 
     $('dist').textContent = fmtDist(distance);
     $('strokes').textContent = strokes;
