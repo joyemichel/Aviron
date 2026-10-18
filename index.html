@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Aviron Live</title>
+<title>My Scoach</title>
 <meta name="description" content="Compteur de cadence, vitesse et chronomètre pour l'aviron">
 <meta name="theme-color" content="#0b1d2c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Aviron Live">
+<meta name="apple-mobile-web-app-title" content="My Scoach">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -119,12 +119,26 @@
   #lineMarker { position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--muted); border: 3px solid var(--panel); display: none; }
   #capAngle { font-size: min(5.5vw, 3.2vh); font-weight: 700; margin-top: 2vh; min-height: 1.2em; }
   #capInfo { font-size: 15px; color: var(--muted); font-weight: 600; margin-top: 1.5vh; font-variant-numeric: tabular-nums; }
-  #viewCap[data-zone="ok"] #capDev, #viewCap[data-zone="ok"] #capHint { color: var(--run); }
-  #viewCap[data-zone="warn"] #capDev, #viewCap[data-zone="warn"] #capHint { color: var(--pause); }
-  #viewCap[data-zone="bad"] #capDev, #viewCap[data-zone="bad"] #capHint { color: var(--bad); }
-  #viewCap[data-zone="ok"] #lineMarker { background: var(--run); }
-  #viewCap[data-zone="warn"] #lineMarker { background: var(--pause); }
-  #viewCap[data-zone="bad"] #lineMarker { background: var(--bad); }
+  /* couleurs des écrans : temps orange, cadence bleu, split vert, direction brun clair */
+  #tTime  { background: #d35f00; border-color: #d35f00; }
+  #tRate  { background: #1f5fbf; border-color: #1f5fbf; }
+  #tSpeed { background: #1e8a4c; border-color: #1e8a4c; }
+  #tTime, #tRate, #tSpeed { color: #ffffff; }
+  #tTime .label, #tRate .label, #tSpeed .label, #tTime .unit, #tRate .unit, #tSpeed .unit,
+  #tTime #hint, #tSpeed #speed2, #time small { color: rgba(255,255,255,.88); }
+  #viewCap { background: #dcc6a4; border-color: #dcc6a4; color: #2b1d0e; }
+  #viewCap .label, #viewCap #capBarWrap, #viewCap #capInfo { color: #5a4630; }
+  #viewCap #capBar { background: #f3e7d3; }
+  #viewCap #capBar .mid { background: #2b1d0e; }
+  #viewCap #lineMarker { border-color: #dcc6a4; }
+  /* zone (sur la ligne / écart moyen / grand écart) : pastille colorée derrière le texte */
+  #capHint { padding: .15em .7em; border-radius: 999px; color: #fff; }
+  #viewCap[data-zone="ok"] #capHint { background: #0f7a40; }
+  #viewCap[data-zone="warn"] #capHint { background: #b35a00; }
+  #viewCap[data-zone="bad"] #capHint { background: #b3261e; }
+  #viewCap[data-zone="ok"] #lineMarker { background: #0f7a40; }
+  #viewCap[data-zone="warn"] #lineMarker { background: #b35a00; }
+  #viewCap[data-zone="bad"] #lineMarker { background: #b3261e; }
 
   @media (orientation: landscape) {
     #grid {
@@ -242,7 +256,7 @@
 
 <!-- démarrage : nécessaire pour les autorisations (iPhone) -->
 <div class="overlay show" id="ovStart">
-  <h1>Aviron Live</h1>
+  <h1>My Scoach</h1>
   <p>Fixe le téléphone sur le bateau, écran visible. L'app mesure la cadence avec l'accéléromètre, la vitesse avec le GPS, et garde l'écran allumé.</p>
   <p>Au démarrage, accepte l'accès à la <b>position</b> et à <b>« Mouvement et orientation »</b> (cadence et boussole).</p>
   <button class="btn" id="btnSensors" style="width:100%;margin-top:10px">Activer les capteurs</button>
@@ -278,6 +292,7 @@
   <h2>Séances enregistrées</h2>
   <div class="card" id="sessList"></div>
   <p style="font-size:13px">Les séances restent sur ce téléphone uniquement (30 dernières).</p>
+  <p style="font-size:13px">My Scoach · version <span id="appVersion"></span></p>
 </div>
 
 <div id="toast"></div>

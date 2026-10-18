@@ -1,4 +1,5 @@
-/* Aviron Live — logique de l'application */
+/* My Scoach — logique de l'application */
+var APP_VERSION = '1.2 (18.10.2026)';
 (function () {
   'use strict';
 
@@ -426,7 +427,7 @@
 
   function fileName(s, ext) {
     var d = new Date(s.date);
-    return 'aviron_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.' + ext;
+    return 'myscoach_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.' + ext;
   }
   function exportFile(s, kind) {
     var content, type;
@@ -437,8 +438,8 @@
       type = 'text/csv';
     } else {
       var t0 = new Date(s.date).getTime();
-      content = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Aviron Live" xmlns="http://www.topografix.com/GPX/1/1">\n' +
-        '<trk><name>Aviron ' + new Date(s.date).toLocaleString('fr-CH') + '</name><type>rowing</type><trkseg>\n' +
+      content = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="My Scoach" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+        '<trk><name>My Scoach ' + new Date(s.date).toLocaleString('fr-CH') + '</name><type>rowing</type><trkseg>\n' +
         s.samples.filter(function (r) { return r[1] !== null; }).map(function (r) {
           return '<trkpt lat="' + r[1] + '" lon="' + r[2] + '"><time>' + new Date(t0 + r[0] * 1000).toISOString() + '</time></trkpt>';
         }).join('\n') + '\n</trkseg></trk>\n</gpx>\n';
@@ -478,4 +479,5 @@
 
   applySettings();
   setState('idle');
+  $('appVersion').textContent = APP_VERSION;
 })();

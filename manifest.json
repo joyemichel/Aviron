@@ -1,6 +1,6 @@
 {
-  "name": "Aviron Live",
-  "short_name": "Aviron",
+  "name": "My Scoach",
+  "short_name": "My Scoach",
   "description": "Chronomètre, cadence et vitesse en temps réel pour l'aviron",
   "lang": "fr",
   "start_url": "./index.html",
@@ -8,10 +8,25 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f4f1ea",
-  "theme_color": "#0b1d2c",
+  "theme_color": "#123f86",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
